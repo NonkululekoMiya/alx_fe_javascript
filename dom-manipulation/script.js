@@ -57,15 +57,26 @@ function showRandomQuote() {
   }  
   
   // Function to add a new quote
-  function addQuote() {
+  async function addQuote() {
     const newQuoteText = document.getElementById('newQuoteText').value;
     const newQuoteCategory = document.getElementById('newQuoteCategory').value;
     if (newQuoteText && newQuoteCategory) {
-      quotes.push({ text: newQuoteText, category: newQuoteCategory });
+      const newQuote = { text: newQuoteText, category: newQuoteCategory };
+      quotes.push(newQuote);
+      saveQuotes();
+      populateCategories();
+      notifyUser('Quote added successfully!');
+      try {
+        await fetch(SERVER_URL, {
+          method: 'POST',
+          body: JSON.stringify(newQuote),
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Error adding quote to server:', error);
+      }
       document.getElementById('newQuoteText').value = '';
       document.getElementById('newQuoteCategory').value = '';
-      saveQuotes();
-      alert('Quote added successfully!');
     } else {
       alert('Please enter both quote text and category.');
     }
@@ -160,7 +171,14 @@ function resolveConflicts(serverQuotes) {
       quotes[index] = serverQuotesMap.get(quote.id);
       conflictResolved = true;
     }
+  }); 
+  serverQuotes.forEach(serverQuote => {
+    if (!quotes.find(q => q.id === serverQuote.id)) {
+      quotes.push(serverQuote);
+      conflictResolved = true;
+    }
   });
+
   if (conflictResolved) {
     saveQuotes();
     notifyUser('Conflicts resolved with server data.');
